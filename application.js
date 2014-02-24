@@ -2,7 +2,9 @@ $(document).ready(function() {
 
 	var accessToken = getAnchor();
 	var listIds = new Array();
-	var 
+	var venueDetails = new Object();
+
+	// Get the Foursquare user's lists and the venues from her lists
 
 	if (accessToken !== null) {
 		var url = "https://api.foursquare.com/v2/users/self/lists?oauth_token=" + accessToken + "&v=20140210";
@@ -17,17 +19,28 @@ $(document).ready(function() {
 			}
 		})
 		
-		.then(function(){
-			$.getJSON("https://api.foursquare.com/v2/lists/" + listIds[0] + "?oauth_token=" + accessToken + "&v=20140210", function(data) {
-				for (var key in data.response.list.listItems.items) {
-					var venueName = data.response.list.listItems.items[key].venue.name;
-					var venuePhone = data.response.list.listItems.items[key].venue.contact.phone;
-					var venueCity = data.response.list.listItems.items[key].venue.location.city;
-					var venueAddress = data.response.list.listItems.items[key].venue.location.address;
-					$('body').append('<p>' + venueName + '</p>');
+			.then(function(){
+				$.each(listIds, function(i, val) {
+					$.getJSON("https://api.foursquare.com/v2/lists/" + val + "?oauth_token=" + accessToken + "&v=20140210", function(data) {
+						for (var key in data.response.list.listItems.items) {
+							var venueName = data.response.list.listItems.items[key].venue.name;
+							var venueCity = data.response.list.listItems.items[key].venue.location.city;
+							var venueAddress = data.response.list.listItems.items[key].venue.location.address;
+							venueDetails.name = venueName;
+							venueDetails.city = venueCity;
+							venueDetails.address = venueAddress;
+							$('body').append('<p>' + venueName + '</p>');
+							console.log(venueDetails); // Values are being stored, now need to pass them to Yelp
+							getYelpReview(venueName, venueCity); // Am I calling the function correctly?				
 						}
-					});
+					})
+			});
+
 		});
+
+	}
+
+	// Scrapes the Foursquare token from the URL
 
 	function getAnchor() {
 		var fullHash = location.hash;
@@ -38,7 +51,62 @@ $(document).ready(function() {
 			return null;
 		}
 	}
-	
+
+	// Takes venueName and venueCity for each venue and fetches Yelp rating
+	// TODO: Should also accept venueAddress
+
+	function getYelpReview(venueName, venueCity) {
+
+	// Taken almost verbatim from the Yelp OAuth example on GitHub
+
+		var auth = { 
+			consumerKey: "281o_SIxUDw90PAk8-z2og", 
+			consumerSecret: "JSSgO22iULGmK4Wcr-0nNxCl-4c",
+	  		accessToken: "VsLRn5JrnqXovmcf5Fl4uUPf7HjAvW4O",
+	  		accessTokenSecret: "vms4r-h0nv9Y7cSCAnfK0ezDjaM",
+	  		serviceProvider: { 
+	    		signatureMethod: "HMAC-SHA1"
+	  		}
+		};
+
+		var accessor = {
+		  consumerSecret: auth.consumerSecret,
+		  tokenSecret: auth.accessTokenSecret
+		};
+
+		parameters = [];
+		parameters.push(['term', venueName]); // Changed terms to venueName
+		parameters.push(['location', venueCity]); // changed near to venueCity
+		parameters.push(['callback', 'cb']);
+		parameters.push(['oauth_consumer_key', auth.consumerKey]);
+		parameters.push(['oauth_consumer_secret', auth.consumerSecret]);
+		parameters.push(['oauth_token', auth.accessToken]);
+		parameters.push(['oauth_signature_method', 'HMAC-SHA1']);
+
+		var message = { 
+		  'action': 'http://api.yelp.com/v2/search',
+		  'method': 'GET',
+		  'parameters': parameters 
+		};
+
+		OAuth.setTimestampAndNonce(message);
+		OAuth.SignatureMethod.sign(message, accessor);
+
+		var parameterMap = OAuth.getParameterMap(message.parameters);
+		parameterMap.oauth_signature = OAuth.percentEncode(parameterMap.oauth_signature)
+		console.log(parameterMap);
+
+		$.ajax({
+		  'url': message.action,
+		  'data': parameterMap,
+		  'cache': true,
+		  'dataType': 'jsonp',
+		  'jsonpCallback': 'cb',
+		  'success': function(data, textStats, XMLHttpRequest) {
+		    console.log(data);
+		    $('body').append('<p>' + data.businesses[0].rating + '</p>'); // TODO: Display rating alongside each venueName in the HTML 
+		  }
+		});
 	}
 
 });
