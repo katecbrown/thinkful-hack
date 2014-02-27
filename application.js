@@ -6,13 +6,13 @@ $(document).ready(function() {
 	// Get the Foursquare user's lists and the venues from her lists
 
 	if (accessToken !== null) {
-		var url = "https://api.foursquare.com/v2/users/self/lists?oauth_token=" + accessToken + "&v=20140210";
+		var url = "https://api.foursquare.com/v2/users/self/lists?oauth_token=" + accessToken + "&v=20140226&group=created";
 	
 		$.getJSON(url, function(data) {
 
-			for (var i = data.response.lists.groups[0].items.length - 1; i >= 0; i--) {
-				var listName = data.response.lists.groups[0].items[i].name;
-				var listId = data.response.lists.groups[0].items[i].id;
+			for (var i = data.response.lists.items.length - 1; i >= 0; i--) {
+				var listName = data.response.lists.items[i].name;
+				var listId = data.response.lists.items[i].id;
 				listIds.push(listId);
 				$('ul').append('<li>' + listName + '</li>');
 			}
@@ -20,7 +20,7 @@ $(document).ready(function() {
 		
 			.then(function(){
 				$.each(listIds, function(i, val) {
-					$.getJSON("https://api.foursquare.com/v2/lists/" + val + "?oauth_token=" + accessToken + "&v=20140210", function(data) {
+					$.getJSON("https://api.foursquare.com/v2/lists/" + val + "?oauth_token=" + accessToken + "&v=20140226", function(data) {
 						for (var key in data.response.list.listItems.items) {
 							var venueName = data.response.list.listItems.items[key].venue.name;
 							var venueCity = data.response.list.listItems.items[key].venue.location.city;
