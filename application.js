@@ -2,7 +2,6 @@ $(document).ready(function() {
 
 	var accessToken = getAnchor();
 	var listIds = new Array();
-	var venueDetails = new Object();
 
 	// Get the Foursquare user's lists and the venues from her lists
 
@@ -26,12 +25,7 @@ $(document).ready(function() {
 							var venueName = data.response.list.listItems.items[key].venue.name;
 							var venueCity = data.response.list.listItems.items[key].venue.location.city;
 							var venueAddress = data.response.list.listItems.items[key].venue.location.address;
-							venueDetails.name = venueName;
-							venueDetails.city = venueCity;
-							venueDetails.address = venueAddress;
-							$('body').append('<p>' + venueName + '</p>');
-							console.log(venueDetails); // Values are being stored, now need to pass them to Yelp
-							getYelpReview(venueName, venueCity); // Am I calling the function correctly?				
+							getYelpReview(venueName, venueCity); 				
 						}
 					})
 			});
@@ -94,7 +88,7 @@ $(document).ready(function() {
 
 		var parameterMap = OAuth.getParameterMap(message.parameters);
 		parameterMap.oauth_signature = OAuth.percentEncode(parameterMap.oauth_signature)
-		console.log(parameterMap);
+		// console.log(parameterMap);
 
 		$.ajax({
 		  'url': message.action,
@@ -103,8 +97,7 @@ $(document).ready(function() {
 		  'dataType': 'jsonp',
 		  'jsonpCallback': 'cb',
 		  'success': function(data, textStats, XMLHttpRequest) {
-		    console.log(data);
-		    $('body').append('<p>' + data.businesses[0].rating + '</p>'); // TODO: Display rating alongside each venueName in the HTML 
+		  	$('body').append('<p>' + venueName + ' - ' + data.businesses[0].rating + '</p>'); 
 		  }
 		});
 	}
