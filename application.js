@@ -2,11 +2,12 @@ $(document).ready(function() {
 
 	var accessToken = getAnchor();
 	var listIds = new Array();
+	var correctBusiness;
 
 	// Get the Foursquare user's lists and the venues from her lists
 
 	if (accessToken !== null) {
-		var url = "https://api.foursquare.com/v2/users/self/lists?oauth_token=" + accessToken + "&v=20140226&group=created";
+		var url = "https://api.foursquare.com/v2/users/self/lists?oauth_token=" + accessToken + "&v=20140306&group=created";
 	
 		$.getJSON(url, function(data) {
 
@@ -14,25 +15,35 @@ $(document).ready(function() {
 				var listName = data.response.lists.items[i].name;
 				var listId = data.response.lists.items[i].id;
 				listIds.push(listId);
-				$('ul').append('<li>' + listName + '</li>');
+				$('select').append('<option id="' + listId + '">' + listName + '</option>');
 			}
 		})
-		
 			.then(function(){
 				$.each(listIds, function(i, val) {
-					$.getJSON("https://api.foursquare.com/v2/lists/" + val + "?oauth_token=" + accessToken + "&v=20140226", function(data) {
+					$.getJSON("https://api.foursquare.com/v2/lists/" + val + "?oauth_token=" + accessToken + "&v=20140306", function(data) {
 						for (var key in data.response.list.listItems.items) {
+							var listName = data.response.list.name;
+							var listId = data.response.list.id;
 							var venueName = data.response.list.listItems.items[key].venue.name;
 							var venueCity = data.response.list.listItems.items[key].venue.location.city;
 							var venueAddress = data.response.list.listItems.items[key].venue.location.address;
-							getYelpReview(venueName, venueCity); 				
+							var venuePhone = data.response.list.listItems.items[key].venue.contact.phone;
+							getYelpReview(listName, listId, venueName, venueCity, venueAddress, venuePhone); 				
 						}
-					})
+					});
 			});
 
 		});
 
 	}
+
+	// Need to filter results based on list selection
+	// Referring to http://stackoverflow.com/questions/6315215/change-content-based-on-select-dropdown-id-in-jquery
+
+	// $('.outtaHere').change(function() {
+	// 	var selected = $(this).find(':selected');
+	// 	console.log(selected);
+	// })
 
 	// Scrapes the Foursquare token from the URL
 
@@ -47,9 +58,8 @@ $(document).ready(function() {
 	}
 
 	// Takes venueName and venueCity for each venue and fetches Yelp rating
-	// TODO: Should also accept venueAddress
 
-	function getYelpReview(venueName, venueCity) {
+	function getYelpReview(listName, listId, venueName, venueCity, venueAddress, venuePhone) {
 
 	// Taken almost verbatim from the Yelp OAuth example on GitHub
 
@@ -69,8 +79,8 @@ $(document).ready(function() {
 		};
 
 		parameters = [];
-		parameters.push(['term', venueName]); // Changed terms to venueName
-		parameters.push(['location', venueCity]); // changed near to venueCity
+		parameters.push(['term', venueName]);
+		parameters.push(['location', venueCity, venueAddress]); // Added venueAddress, not sure if it is working
 		parameters.push(['callback', 'cb']);
 		parameters.push(['oauth_consumer_key', auth.consumerKey]);
 		parameters.push(['oauth_consumer_secret', auth.consumerSecret]);
@@ -87,19 +97,29 @@ $(document).ready(function() {
 		OAuth.SignatureMethod.sign(message, accessor);
 
 		var parameterMap = OAuth.getParameterMap(message.parameters);
-		parameterMap.oauth_signature = OAuth.percentEncode(parameterMap.oauth_signature)
+		parameterMap.oauth_signature = OAuth.percentEncode(parameterMap.oauth_signature);
 		// console.log(parameterMap);
 
 		$.ajax({
-		  'url': message.action,
-		  'data': parameterMap,
-		  'cache': true,
-		  'dataType': 'jsonp',
-		  'jsonpCallback': 'cb',
-		  'success': function(data, textStats, XMLHttpRequest) {
-		  	$('body').append('<p>' + venueName + ' - ' + data.businesses[0].rating + '</p>'); 
-		  }
+			'url': message.action,
+			'data': parameterMap,
+			'cache': true,
+		  	'dataType': 'jsonp',
+		  	'jsonpCallback': 'cb',
+		  	'success': function(data, textStats, XMLHttpRequest) {
+
+		  		// Find the business listing where Yelp and Foursquare phone number match, and return the name, rating, and URL
+		  		// Ignores businesses without phone numbers for now
+
+		  		for (var key in data.businesses) {
+
+		  			if (venuePhone !== undefined && data.businesses[key].phone == venuePhone) {
+		  				correctBusiness = key;
+		  				$('#main').append('<p class="' + listId + '">' + venueName + ' - ' + data.businesses[correctBusiness].rating + ' - ' + data.businesses[correctBusiness].url + '</p>');
+		  			
+		  			}
+		  		}
+		  	}
 		});
 	}
-
 });
