@@ -4,10 +4,10 @@ $(document).ready(function() {
 	var listIds = new Array();
 	var correctBusiness;
 
-	// Get the Foursquare user's lists and the venues from her lists
+	// Get the Foursquare user's lists
 
 	if (accessToken !== null) {
-		var url = "https://api.foursquare.com/v2/users/self/lists?oauth_token=" + accessToken + "&v=20140306&group=created";
+		var url = "https://api.foursquare.com/v2/users/self/lists?oauth_token=" + accessToken + "&v=20140406&group=created";
 	
 		$.getJSON(url, function(data) {
 
@@ -18,34 +18,37 @@ $(document).ready(function() {
 				$('select').append('<option id="' + listId + '">' + listName + '</option>');
 			}
 		})
-			.then(function(){
-				$.each(listIds, function(i, val) {
-					$.getJSON("https://api.foursquare.com/v2/lists/" + val + "?oauth_token=" + accessToken + "&v=20140306", function(data) {
-						for (var key in data.response.list.listItems.items) {
-							var listName = data.response.list.name;
-							var listId = data.response.list.id;
-							var venueName = data.response.list.listItems.items[key].venue.name;
-							var venueCity = data.response.list.listItems.items[key].venue.location.city;
-							var venueAddress = data.response.list.listItems.items[key].venue.location.address;
-							var venuePhone = data.response.list.listItems.items[key].venue.contact.phone;
-							getYelpReview(listName, listId, venueName, venueCity, venueAddress, venuePhone); 				
-						}
-					});
-			});
-
-		});
-
+			.then(function() {
+				var selectedListId = $('select').find(':selected').attr('id');
+				getVenues(selectedListId);
+		})
 	}
 
-	// Need to filter results based on list selection
-	// Referring to http://stackoverflow.com/questions/6315215/change-content-based-on-select-dropdown-id-in-jquery
+	// Call Foursquare API for venues from currently selected list
 
-	// $('.outtaHere').change(function() {
-	// 	var selected = $(this).find(':selected');
-	// 	console.log(selected);
-	// })
+	function getVenues(selectedListId) {
+		$.getJSON("https://api.foursquare.com/v2/lists/" + selectedListId + "?oauth_token=" + accessToken + "&v=20140406", function(data) {
+			for (var key in data.response.list.listItems.items) {
+				var listId = data.response.list.id;
+				var venueName = data.response.list.listItems.items[key].venue.name;
+				var venueCity = data.response.list.listItems.items[key].venue.location.city;
+				var venueAddress = data.response.list.listItems.items[key].venue.location.address;
+				var venuePhone = data.response.list.listItems.items[key].venue.contact.phone;
+				getYelpReview(venueName, venueCity, venueAddress, venuePhone); 				
+			}
+		});
+	}
 
-	// Scrapes the Foursquare token from the URL
+	// Swap out venues when different list is selected
+
+	$('select').change(function() {
+		var selected = $(this).find(':selected');
+		var selectedListId = selected.attr('id');
+		$('#venues').html("");
+		getVenues(selectedListId);
+		});
+	
+	// Scrape the Foursquare token from the URL
 
 	function getAnchor() {
 		var fullHash = location.hash;
@@ -57,9 +60,9 @@ $(document).ready(function() {
 		}
 	}
 
-	// Takes venueName and venueCity for each venue and fetches Yelp rating
+	// Take venueName and venueCity for each venue and fetches Yelp rating
 
-	function getYelpReview(listName, listId, venueName, venueCity, venueAddress, venuePhone) {
+	function getYelpReview(venueName, venueCity, venueAddress, venuePhone) {
 
 	// Taken almost verbatim from the Yelp OAuth example on GitHub
 
@@ -112,10 +115,10 @@ $(document).ready(function() {
 		  		// Ignores businesses without phone numbers for now
 
 		  		for (var key in data.businesses) {
-
+		  			console.log(venueName);
 		  			if (venuePhone !== undefined && data.businesses[key].phone == venuePhone) {
 		  				correctBusiness = key;
-		  				$('#main').append('<p class="' + listId + '">' + venueName + ' - ' + data.businesses[correctBusiness].rating + ' - ' + data.businesses[correctBusiness].url + '</p>');
+		  				$('#venues').append('<p>' + venueName + ' - ' + data.businesses[correctBusiness].rating + ' - ' + data.businesses[correctBusiness].url + '</p>');
 		  			
 		  			}
 		  		}
