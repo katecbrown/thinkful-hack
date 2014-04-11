@@ -31,10 +31,9 @@ $(document).ready(function() {
 			for (var key in data.response.list.listItems.items) {
 				var listId = data.response.list.id;
 				var venueName = data.response.list.listItems.items[key].venue.name;
-				var venueCity = data.response.list.listItems.items[key].venue.location.city;
-				var venueAddress = data.response.list.listItems.items[key].venue.location.address;
+				var venueLoc = data.response.list.listItems.items[key].venue.location.address + " " + data.response.list.listItems.items[key].venue.location.city;
 				var venuePhone = data.response.list.listItems.items[key].venue.contact.phone;
-				getYelpReview(venueName, venueCity, venueAddress, venuePhone); 				
+				getYelpReview(venueName, venueLoc, venuePhone); 				
 			}
 		});
 	}
@@ -62,7 +61,7 @@ $(document).ready(function() {
 
 	// Take venueName and venueCity for each venue and fetches Yelp rating
 
-	function getYelpReview(venueName, venueCity, venueAddress, venuePhone) {
+	function getYelpReview(venueName, venueLoc, venuePhone) {
 
 	// Taken almost verbatim from the Yelp OAuth example on GitHub
 
@@ -83,7 +82,7 @@ $(document).ready(function() {
 
 		parameters = [];
 		parameters.push(['term', venueName]);
-		parameters.push(['location', venueCity, venueAddress]); // Added venueAddress, not sure if it is working
+		parameters.push(['location', venueLoc]);
 		parameters.push(['callback', 'cb']);
 		parameters.push(['oauth_consumer_key', auth.consumerKey]);
 		parameters.push(['oauth_consumer_secret', auth.consumerSecret]);
@@ -101,7 +100,7 @@ $(document).ready(function() {
 
 		var parameterMap = OAuth.getParameterMap(message.parameters);
 		parameterMap.oauth_signature = OAuth.percentEncode(parameterMap.oauth_signature);
-		// console.log(parameterMap);
+		console.log(parameterMap);
 
 		$.ajax({
 			'url': message.action,
@@ -113,14 +112,13 @@ $(document).ready(function() {
 
 		  		// Find the business listing where Yelp and Foursquare phone number match, and return the name, rating, and URL
 		  		// Ignores businesses without phone numbers for now
-
+		  		console.log(data);
 		  		for (var key in data.businesses) {
-		  			console.log(venueName);
-		  			if (venuePhone !== undefined && data.businesses[key].phone == venuePhone) {
-		  				correctBusiness = key;
-		  				$('#venues').append('<p>' + venueName + ' - ' + data.businesses[correctBusiness].rating + ' - ' + data.businesses[correctBusiness].url + '</p>');
-		  			
-		  			}
+		  			// if (venuePhone !== undefined && data.businesses[key].phone == venuePhone) {
+		  				// correctBusiness = key;
+		  				// $('#venues').append('<p>' + venueName + venuePhone + ' - ' + data.businesses[correctBusiness].rating + ' - ' + data.businesses[correctBusiness].url + '</p>');
+		  			$('#venues').append('<p>' + venueName + venuePhone + ' - ' + data.businesses[0].rating + ' - ' + data.businesses[0].url + data.businesses[0].phone + '</p>');
+		  			// }
 		  		}
 		  	}
 		});
