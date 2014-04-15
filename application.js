@@ -26,17 +26,21 @@ $(document).ready(function() {
 
 	// Call Foursquare API for venues from currently selected list
 
-	function getVenues(selectedListId) {
-		$.getJSON("https://api.foursquare.com/v2/lists/" + selectedListId + "?oauth_token=" + accessToken + "&v=20140406", function(data) {
-			for (var key in data.response.list.listItems.items) {
-				var listId = data.response.list.id;
-				var venueName = data.response.list.listItems.items[key].venue.name;
-				var venueLoc = data.response.list.listItems.items[key].venue.location.address + " " + data.response.list.listItems.items[key].venue.location.city;
-				var venuePhone = data.response.list.listItems.items[key].venue.contact.phone;
-				getYelpReview(venueName, venueLoc, venuePhone); 				
-			}
-		});
-	}
+    function getVenues(selectedListId) {
+        $.getJSON("https://api.foursquare.com/v2/lists/" + selectedListId + "?oauth_token=" + accessToken + "&v=20140406", function(data) {
+            for (var key in data.response.list.listItems.items) {
+                var listId = data.response.list.id;
+                var venueName = data.response.list.listItems.items[key].venue.name;
+                var venueAddress = data.response.list.listItems.items[key].venue.location.address;
+                var venueLoc = data.response.list.listItems.items[key].venue.location.address + " " + data.response.list.listItems.items[key].venue.location.city;
+                var venueLat = data.response.list.listItems.items[key].venue.location.lat;
+                var venueLong = data.response.list.listItems.items[key].venue.location.lng;
+                var venuePhone = data.response.list.listItems.items[key].venue.contact.phone;
+                showCoordinates(venueName, venueLat, venueLong);
+                getYelpReview(venueName, venueLat, venueLong, venuePhone);                  
+            }
+        });
+    }
 
 	// Swap out venues when different list is selected
 
@@ -59,68 +63,83 @@ $(document).ready(function() {
 		}
 	}
 
+	function showCoordinates(venueName, venueLat, venueLong) {
+        $('#venues').append('<p>' + venueName + "," + venueLat + "," + venueLong + '</p>');
+    }
+
 	// Take venueName and venueCity for each venue and fetches Yelp rating
 
-	function getYelpReview(venueName, venueLoc, venuePhone) {
+    function getYelpReview(venueName, venueLat, venueLong, venuePhone) {
 
-	// Taken almost verbatim from the Yelp OAuth example on GitHub
+    // Taken almost verbatim from the Yelp OAuth example on GitHub
 
-		var auth = { 
-			consumerKey: "281o_SIxUDw90PAk8-z2og", 
-			consumerSecret: "JSSgO22iULGmK4Wcr-0nNxCl-4c",
-	  		accessToken: "VsLRn5JrnqXovmcf5Fl4uUPf7HjAvW4O",
-	  		accessTokenSecret: "vms4r-h0nv9Y7cSCAnfK0ezDjaM",
-	  		serviceProvider: { 
-	    		signatureMethod: "HMAC-SHA1"
-	  		}
-		};
+        var auth = { 
+            consumerKey: "281o_SIxUDw90PAk8-z2og", 
+            consumerSecret: "JSSgO22iULGmK4Wcr-0nNxCl-4c",
+            accessToken: "VsLRn5JrnqXovmcf5Fl4uUPf7HjAvW4O",
+            accessTokenSecret: "vms4r-h0nv9Y7cSCAnfK0ezDjaM",
+            serviceProvider: { 
+                signatureMethod: "HMAC-SHA1"
+            }
+        };
 
-		var accessor = {
-		  consumerSecret: auth.consumerSecret,
-		  tokenSecret: auth.accessTokenSecret
-		};
+        var accessor = {
+          consumerSecret: auth.consumerSecret,
+          tokenSecret: auth.accessTokenSecret
+        };
+        var ll = venueLat + "," + venueLong;
+        parameters = [];
+        parameters.push(['term', venueName]);
+        parameters.push(['ll', ll]);
+        parameters.push(['callback', 'cb']);
+        parameters.push(['oauth_consumer_key', auth.consumerKey]);
+        parameters.push(['oauth_consumer_secret', auth.consumerSecret]);
+        parameters.push(['oauth_token', auth.accessToken]);
+        parameters.push(['oauth_signature_method', 'HMAC-SHA1']);
 
-		parameters = [];
-		parameters.push(['term', venueName]);
-		parameters.push(['location', venueLoc]);
-		parameters.push(['callback', 'cb']);
-		parameters.push(['oauth_consumer_key', auth.consumerKey]);
-		parameters.push(['oauth_consumer_secret', auth.consumerSecret]);
-		parameters.push(['oauth_token', auth.accessToken]);
-		parameters.push(['oauth_signature_method', 'HMAC-SHA1']);
+        var message = { 
+          'action': 'http://api.yelp.com/v2/search',
+          'method': 'GET',
+          'parameters': parameters 
+        };
 
-		var message = { 
-		  'action': 'http://api.yelp.com/v2/search',
-		  'method': 'GET',
-		  'parameters': parameters 
-		};
+        OAuth.setTimestampAndNonce(message);
+        OAuth.SignatureMethod.sign(message, accessor);
 
-		OAuth.setTimestampAndNonce(message);
-		OAuth.SignatureMethod.sign(message, accessor);
+        var parameterMap = OAuth.getParameterMap(message.parameters);
+        parameterMap.oauth_signature = OAuth.percentEncode(parameterMap.oauth_signature);
+        console.log(parameterMap);
 
-		var parameterMap = OAuth.getParameterMap(message.parameters);
-		parameterMap.oauth_signature = OAuth.percentEncode(parameterMap.oauth_signature);
-		console.log(parameterMap);
 
-		$.ajax({
-			'url': message.action,
-			'data': parameterMap,
-			'cache': true,
-		  	'dataType': 'jsonp',
-		  	'jsonpCallback': 'cb',
-		  	'success': function(data, textStats, XMLHttpRequest) {
+        // Removed jsonpCallback parameter, allowing jquery to define name of the callback.
+        // Before, I believe multiple ajax requests were trying to use the same callback name 'cb'
+        // which caused responses for the wrong request to be processed by the success function
+        $.ajax({
+            'url': message.action,
+            'data': parameterMap,
+            'cache': true,
+            'dataType': 'jsonp',
+            'success': function(data, textStats, XMLHttpRequest) {
+                // Find the business listing where Yelp and Foursquare phone number match, and return the name, rating, and URL
+                // Ignores businesses without phone numbers for now
+                console.log(data);
+                for (var key in data.businesses) {
+                    console.log("venueName: " + venueName + " yelpName: " + data.businesses[key].name);
+                    // You may also want to try fuzzy string matching on the venue names. I'd try something like Levenshtein 
+                    // distance which computes the number of single character changes to transform one string into another one.
+                    // 
+                    // Levenshtein overview: http://en.wikipedia.org/wiki/Levenshtein_distance
+                    // Javascript implementation: http://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#JavaScript
+                    if (venuePhone !== undefined && data.businesses[key].phone == venuePhone) {
+                        console.log("match found.");
+                        correctBusiness = key;
+                        $('#venues').append('<p>' + venueName + venuePhone + ' - ' + data.businesses[correctBusiness].rating + ' - ' + data.businesses[correctBusiness].url + '</p>');
+                        break;
 
-		  		// Find the business listing where Yelp and Foursquare phone number match, and return the name, rating, and URL
-		  		// Ignores businesses without phone numbers for now
-		  		console.log(data);
-		  		for (var key in data.businesses) {
-		  			// if (venuePhone !== undefined && data.businesses[key].phone == venuePhone) {
-		  				// correctBusiness = key;
-		  				// $('#venues').append('<p>' + venueName + venuePhone + ' - ' + data.businesses[correctBusiness].rating + ' - ' + data.businesses[correctBusiness].url + '</p>');
-		  			$('#venues').append('<p>' + venueName + venuePhone + ' - ' + data.businesses[0].rating + ' - ' + data.businesses[0].url + data.businesses[0].phone + '</p>');
-		  			// }
-		  		}
-		  	}
-		});
-	}
+                    }
+                }
+            }
+        });
+    }
 });
+
