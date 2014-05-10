@@ -107,18 +107,19 @@ $(document).ready(function() {
 			'data': parameterMap,
 			'cache': true,
 		  	'dataType': 'jsonp',
-		  	'jsonpCallback': 'cb',
+		  	// 'jsonpCallback': 'cb',
 		  	'success': function(data, textStats, XMLHttpRequest) {
 
 		  		// Find the business listing where Yelp and Foursquare phone number match, and return the name, rating, and URL
 		  		// Ignores businesses without phone numbers for now
+		  		
 		  		console.log(data);
 		  		for (var key in data.businesses) {
-		  			// if (venuePhone !== undefined && data.businesses[key].phone == venuePhone) {
-		  				// correctBusiness = key;
-		  				// $('#venues').append('<p>' + venueName + venuePhone + ' - ' + data.businesses[correctBusiness].rating + ' - ' + data.businesses[correctBusiness].url + '</p>');
-		  			$('#venues').append('<p>' + venueName + venuePhone + ' - ' + data.businesses[0].rating + ' - ' + data.businesses[0].url + data.businesses[0].phone + '</p>');
-		  			// }
+		  			if (venuePhone !== undefined && data.businesses[key].phone == venuePhone) {
+		  				correctBusiness = key;
+		  				$('#venues').append('<p>' + venueName + venuePhone + ' - ' + data.businesses[correctBusiness].rating + ' - ' + data.businesses[correctBusiness].url + '</p>');
+		  			//$('#venues').append('<p>' + venueName + venuePhone + ' - ' + data.businesses[0].rating + ' - ' + data.businesses[0].url + data.businesses[0].phone + '</p>');
+		  			 }
 		  		}
 		  	}
 		});
