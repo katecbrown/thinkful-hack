@@ -107,18 +107,21 @@ $(document).ready(function() {
 			'data': parameterMap,
 			'cache': true,
 		  	'dataType': 'jsonp',
-		  	// 'jsonpCallback': 'cb',
+		  	// 'jsonpCallback': 'cb', 
 		  	'success': function(data, textStats, XMLHttpRequest) {
 
 		  		// Find the business listing where Yelp and Foursquare phone number match, and return the name, rating, and URL
 		  		// Ignores businesses without phone numbers for now
-		  		
+		  		// Ricky suggests fuzzy string matching here
+		  			// Levenshtein overview: http://en.wikipedia.org/wiki/Levenshtein_distance
+            		// Javascript implementation: http://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#JavaScript
+            	// Seeing multiple results for same business a lot of the time, need a better way to match venues
+
 		  		console.log(data);
 		  		for (var key in data.businesses) {
 		  			if (venuePhone !== undefined && data.businesses[key].phone == venuePhone) {
 		  				correctBusiness = key;
-		  				$('#venues').append('<p>' + venueName + venuePhone + ' - ' + data.businesses[correctBusiness].rating + ' - ' + data.businesses[correctBusiness].url + '</p>');
-		  			//$('#venues').append('<p>' + venueName + venuePhone + ' - ' + data.businesses[0].rating + ' - ' + data.businesses[0].url + data.businesses[0].phone + '</p>');
+		  				$('#venues').append('<p>' + venueName + ' - ' + data.businesses[correctBusiness].rating + ' - <a href="' + data.businesses[correctBusiness].url + '">' + data.businesses[correctBusiness].url + '</a></p>');
 		  			 }
 		  		}
 		  	}
